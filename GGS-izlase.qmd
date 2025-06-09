@@ -5,6 +5,7 @@ author: "Mārtiņš Liberts"
 date: today
 format:
   html:
+    embed-resources: true
     page-layout: full
 execute:
   echo: false
