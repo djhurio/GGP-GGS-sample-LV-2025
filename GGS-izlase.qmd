@@ -73,15 +73,13 @@ tab.frame.csp[is.na(pers_1859_trim), pers_1859_trim := "Kopā"]
 tab.frame.csp.n <- dcast.data.table(
   tab.frame.csp,
   pers_kopa_trim ~ pers_1859_trim,
-  value.var = "n",
-  fill = 0L
+  value.var = "n"
 )
 
 tab.frame.csp.p <- dcast.data.table(
   tab.frame.csp,
   pers_kopa_trim ~ pers_1859_trim,
-  value.var = "p",
-  fill = 0
+  value.var = "p"
 )
 
 gt(tab.frame.csp.n) |>
@@ -97,6 +95,7 @@ gt(tab.frame.csp.n) |>
     everything() ~ pct(100 / 13)
   ) |>
   fmt_number(decimals = 0) |>
+  sub_missing(missing_text = "") |>
   tab_style(
     style = cell_fill(color = "#f0f0f0"),
     locations = cells_body(columns = "0")
@@ -118,7 +117,8 @@ gt(tab.frame.csp.p) |>
   cols_width(
     everything() ~ pct(100 / 13)
   ) |>
-  fmt_number(decimals = 3) |>
+  fmt_number(decimals = 2) |>
+  sub_missing(missing_text = "") |>
   tab_style(
     style = cell_fill(color = "#f0f0f0"),
     locations = cells_body(columns = "0")
