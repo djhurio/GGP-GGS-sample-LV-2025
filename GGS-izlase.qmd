@@ -1,0 +1,129 @@
+---
+title: "GGS izlases sagatavošana"
+subtitle: "Latvija, 2025"
+author: "Mārtiņš Liberts"
+date: today
+format:
+  html:
+    page-layout: full
+execute:
+  echo: false
+lang: lv-LV
+language: 
+  title-block-author-single: "Autors"
+  title-block-published: "Datums"
+---
+
+# Latvijas privāto mājokļu ietvara sagatavošana
+
+No CSP ir saņemts privāto mājokļu ietvars, kas ietver visus Latvijas privātos mājokļus ar vismaz vienu pastāvīgo mājokļa iedzīvotāju.
+
+```{r}
+#| output: false
+library(data.table)
+library(gt)
+library(purrr)
+
+frame.csp <- fread(
+  file = file.path(config::get("dir.data.csp"), "Ietvars_01042025_LU.csv")
+) |> setnames(tolower)
+
+# Replace NA with 0
+frame.csp[is.na(vc1859_sum), vc1859_sum := 0L]
+
+# Trim
+frame.csp[, pers_kopa_trim := fifelse(pers_sk    < 10L, pers_sk,    10L)]
+frame.csp[, pers_1859_trim := fifelse(vc1859_sum < 10L, vc1859_sum, 10L)]
+
+frame.csp[, pers_kopa_trim := factor(pers_kopa_trim, 0:10, c(0:9, "10+"))]
+frame.csp[, pers_1859_trim := factor(pers_1859_trim, 0:10, c(0:9, "10+"))]
+
+oc.rate <- frame.csp[, round(100 * sum(vc1859_sum == 0L) / .N, 1)]
+```
+
+Katram mājoklim ir zināms kopīgais pastāvīgo iedzīvotāju skaits, kā arī iedzīvotāju skaits vecumā 18--59 gadi, kas ir GGS mērķa populācija.
+
+Ietvarā ir `r prettyNum(frame.csp[, .N], big.mark = ",")` mājokļi, no kuriem `r prettyNum(frame.csp[, sum(vc1859_sum == 0L)], big.mark = ",")` (`r oc.rate` %) mājokļos nav reģistrēta neviena persona vecumā 18--59 gadi.
+
+**Ierosinājums:** GGS populācijas ietvarā ietvert tikai tos privātos mājokļus, kuros ir reģistrēta vismaz viena persona vecumā 18--59 gadi. Tādi kopā ir `r prettyNum(frame.csp[, sum(vc1859_sum > 0L)], big.mark = ",")` mājokļi.
+
+Apsvērumi:
+
+- GGS populācijas ietvarā saglabājot visus privātos mājokļus ir sagaidāms augsts virspārklājums (apsekojumam nederīgi mājokļi). Sagaidāmais virspārklājums būtu `r oc.rate` %.
+- Ir jāņem vērā, ka šādā veidā mēs potenciāli palielinām GGS mērķa populācijas nenoklājumu (personas vecumā 18--59 gadi), jo diezgan droši daļā no izslēgtajiem mājokļiem būs tādi, kuros faktiski dzīvo GGS mērķa populācijai piederošas personas. Šobrīd nav iespējams novērtēt ietekmi uz nenoklājumu. Mērķa populācijas kopīgo nenoklājumu var vērtēt pēc GGS apsekojuma datu savākšanas.
+
+```{r}
+tab.frame.csp <- frame.csp[, .(n = .N), keyby = .(pers_kopa_trim, pers_1859_trim)]
+tab.frame.csp[, p := prop.table(n)]
+
+tab.frame.csp <- rbindlist(
+  list(
+    tab.frame.csp,
+    tab.frame.csp[, map(.SD, sum), .SDcols = c("n", "p"), keyby = .(pers_kopa_trim)],
+    tab.frame.csp[, map(.SD, sum), .SDcols = c("n", "p"), keyby = .(pers_1859_trim)],
+    tab.frame.csp[, map(.SD, sum), .SDcols = c("n", "p")]
+  ),
+  fill = TRUE
+)
+
+tab.frame.csp[is.na(pers_kopa_trim), pers_kopa_trim := "Kopā"]
+tab.frame.csp[is.na(pers_1859_trim), pers_1859_trim := "Kopā"]
+
+tab.frame.csp.n <- dcast.data.table(
+  tab.frame.csp,
+  pers_kopa_trim ~ pers_1859_trim,
+  value.var = "n",
+  fill = 0L
+)
+
+tab.frame.csp.p <- dcast.data.table(
+  tab.frame.csp,
+  pers_kopa_trim ~ pers_1859_trim,
+  value.var = "p",
+  fill = 0
+)
+
+gt(tab.frame.csp.n) |>
+  tab_header("Privāto mājokļu skaits") |>
+  tab_spanner(
+    label = "Mājokļa personu skaits vecumā 18-59",
+    columns = matches("\\d")
+  ) |>
+  cols_label(
+    pers_kopa_trim = "Personu skaits mājoklī"
+  ) |>
+  cols_width(
+    everything() ~ pct(100 / 13)
+  ) |>
+  fmt_number(decimals = 0) |>
+  tab_style(
+    style = cell_fill(color = "#f0f0f0"),
+    locations = cells_body(columns = "0")
+  ) |>
+  tab_options(
+    table.width = pct(100),
+    quarto.disable_processing = TRUE
+  )
+
+gt(tab.frame.csp.p) |>
+  tab_header("Privāto mājokļu skaita īpatsvars") |>
+  tab_spanner(
+    label = "Mājokļa personu skaits vecumā 18-59",
+    columns = matches("\\d")
+  ) |>
+  cols_label(
+    pers_kopa_trim = "Personu skaits mājoklī"
+  ) |>
+  cols_width(
+    everything() ~ pct(100 / 13)
+  ) |>
+  fmt_number(decimals = 3) |>
+  tab_style(
+    style = cell_fill(color = "#f0f0f0"),
+    locations = cells_body(columns = "0")
+  ) |>
+  tab_options(
+    table.width = pct(100),
+    quarto.disable_processing = TRUE
+  )
+```
