@@ -131,7 +131,8 @@ gt(tab.frame.csp.p) |>
 
 ## VZD Adrešu reģistra teksta dati
 
-VZD dati tiek iegūti no [Latvijas Atvērto datu portāla](https://data.gov.lv/dati/lv/dataset/valsts-adresu-registra-informacijas-sistemas-atvertie-dati/resource/1d3cbdf2-ee7d-4743-90c7-97d38824d0bf).
+VZD dati tiek iegūti no <a href="https://data.gov.lv/dati/lv/dataset/valsts-adresu-registra-informacijas-sistemas-atvertie-dati/resource/1d3cbdf2-ee7d-4743-90c7-97d38824d0bf" target="_blank">Latvijas Atvērto datu portāla</a>.
+
 
 ```{r VZD}
 tab_majo_vzd <- fread(
