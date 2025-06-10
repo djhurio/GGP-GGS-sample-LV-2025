@@ -1,5 +1,5 @@
 ---
-title: "GGS izlases sagatavošana"
+title: "GGP-GGS izlases sagatavošana"
 subtitle: "Latvija, 2025"
 author: "Mārtiņš Liberts"
 date: today
@@ -26,11 +26,9 @@ library(gt)
 library(purrr)
 
 frame.csp <- fread(
-  file = file.path(config::get("dir.data.csp"), "Ietvars_01042025_LU.csv")
-) |> setnames(tolower)
-
-# Replace NA with 0
-frame.csp[is.na(vc1859_sum), vc1859_sum := 0L]
+  file = "data/frame_csp.ycsv.gz",
+  yaml = TRUE
+)
 
 # Trim
 frame.csp[, pers_kopa_trim := fifelse(pers_sk    < 10L, pers_sk,    10L)]
@@ -46,9 +44,9 @@ Katram mājoklim ir zināms kopīgais pastāvīgo iedzīvotāju skaits, kā arī
 
 Ietvarā ir `r prettyNum(frame.csp[, .N], big.mark = ",")` mājokļi, no kuriem `r prettyNum(frame.csp[, sum(vc1859_sum == 0L)], big.mark = ",")` (`r oc.rate` %) mājokļos nav reģistrēta neviena persona vecumā 18--59 gadi.
 
-**Ierosinājums:** GGS populācijas ietvarā ietvert tikai tos privātos mājokļus, kuros ir reģistrēta vismaz viena persona vecumā 18--59 gadi. Tādi kopā ir `r prettyNum(frame.csp[, sum(vc1859_sum > 0L)], big.mark = ",")` mājokļi.
+**Ierosinājums (saskaņots 2025-06-10):** GGS populācijas ietvarā ietvert tikai tos privātos mājokļus, kuros ir reģistrēta vismaz viena persona vecumā 18--59 gadi. Tādi kopā ir `r prettyNum(frame.csp[, sum(vc1859_sum > 0L)], big.mark = ",")` mājokļi.
 
-Apsvērumi:
+**Apsvērumi:**
 
 - GGS populācijas ietvarā saglabājot visus privātos mājokļus ir sagaidāms augsts virspārklājums (apsekojumam nederīgi mājokļi). Sagaidāmais virspārklājums būtu `r oc.rate` %.
 - Ir jāņem vērā, ka šādā veidā mēs potenciāli palielinām GGS mērķa populācijas nenoklājumu (personas vecumā 18--59 gadi), jo diezgan droši daļā no izslēgtajiem mājokļiem būs tādi, kuros faktiski dzīvo GGS mērķa populācijai piederošas personas. Šobrīd nav iespējams novērtēt ietekmi uz nenoklājumu. Mērķa populācijas kopīgo nenoklājumu var vērtēt pēc GGS apsekojuma datu savākšanas.
