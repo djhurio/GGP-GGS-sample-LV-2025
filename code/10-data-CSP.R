@@ -28,11 +28,6 @@ frame.csp[is.na(vc1859_sum), vc1859_sum := 0L]
 
 fwrite(
   x = frame.csp,
-  file = "data/frame_csp.ycsv.gz",
+  file = file.path(config::get("dir.data"), "frame_csp.ycsv.gz"),
   yaml = TRUE
 )
-
-# arrow::write_parquet(
-#   x = frame.csp,
-#   sink = "data/frame_csp.parquet"
-# )
