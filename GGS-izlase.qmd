@@ -17,9 +17,11 @@ language:
 
 # Latvijas privāto mājokļu ietvara sagatavošana
 
+## Dati no CSP par pastāvīgi apdzīvotiem privātajiem mājokļiem
+
 No CSP ir saņemts privāto mājokļu ietvars, kas ietver visus Latvijas privātos mājokļus ar vismaz vienu pastāvīgo mājokļa iedzīvotāju.
 
-```{r}
+```{r CSP frame}
 #| output: false
 library(data.table)
 library(gt)
@@ -42,7 +44,7 @@ oc.rate <- frame.csp[, round(100 * sum(vc1859_sum == 0L) / .N, 1)]
 
 Katram mājoklim ir zināms kopīgais pastāvīgo iedzīvotāju skaits, kā arī iedzīvotāju skaits vecumā 18--59 gadi, kas ir GGS mērķa populācija.
 
-Ietvarā ir `r prettyNum(frame.csp[, .N], big.mark = ",")` mājokļi, no kuriem `r prettyNum(frame.csp[, sum(vc1859_sum == 0L)], big.mark = ",")` (`r oc.rate` %) mājokļos nav reģistrēta neviena persona vecumā 18--59 gadi.
+Ietvarā ir `r frame.csp[, prettyNum(.N, big.mark = ",")]` mājokļi, no kuriem `r frame.csp[, prettyNum(sum(vc1859_sum == 0L), big.mark = ",")]` (`r oc.rate` %) mājokļos nav reģistrēta neviena persona vecumā 18--59 gadi.
 
 **Ierosinājums (saskaņots 2025-06-10):** GGS populācijas ietvarā ietvert tikai tos privātos mājokļus, kuros ir reģistrēta vismaz viena persona vecumā 18--59 gadi. Tādi kopā ir `r prettyNum(frame.csp[, sum(vc1859_sum > 0L)], big.mark = ",")` mājokļi.
 
@@ -51,7 +53,7 @@ Ietvarā ir `r prettyNum(frame.csp[, .N], big.mark = ",")` mājokļi, no kuriem 
 - GGS populācijas ietvarā saglabājot visus privātos mājokļus ir sagaidāms augsts virspārklājums (apsekojumam nederīgi mājokļi). Sagaidāmais virspārklājums būtu `r oc.rate` %.
 - Ir jāņem vērā, ka šādā veidā mēs potenciāli palielinām GGS mērķa populācijas nenoklājumu (personas vecumā 18--59 gadi), jo diezgan droši daļā no izslēgtajiem mājokļiem būs tādi, kuros faktiski dzīvo GGS mērķa populācijai piederošas personas. Šobrīd nav iespējams novērtēt ietekmi uz nenoklājumu. Mērķa populācijas kopīgo nenoklājumu var vērtēt pēc GGS apsekojuma datu savākšanas.
 
-```{r}
+```{r CSP tables}
 tab.frame.csp <- frame.csp[, .(n = .N), keyby = .(pers_kopa_trim, pers_1859_trim)]
 tab.frame.csp[, p := prop.table(n)]
 
@@ -123,6 +125,39 @@ gt(tab.frame.csp.p) |>
   ) |>
   tab_options(
     table.width = pct(100),
+    quarto.disable_processing = TRUE
+  )
+```
+
+## VZD Adrešu reģistra teksta dati
+
+VZD dati tiek iegūti no [Latvijas Atvērto datu portāla](https://data.gov.lv/dati/lv/dataset/valsts-adresu-registra-informacijas-sistemas-atvertie-dati/resource/1d3cbdf2-ee7d-4743-90c7-97d38824d0bf).
+
+```{r VZD}
+tab_majo_vzd <- fread(
+  file = file.path(config::get("dir.data"), "tab_majo_vzd.csvy"),
+  yaml = TRUE
+)
+```
+
+Kopā VZD datos pēc datu apstrādes ir `r tab_majo_vzd[, prettyNum(sum(N), big.mark = ",")]` adresācijas objekti, kas ietver ēkas un telpu grupas (dzīvokļus). Ņemt vērā, ka šie dati satur visus adresācijas objektus - tai skaitā industriālās ēkas un neapdzīvotus mājokļus.
+
+```{r VZD table}
+gt(tab_majo_vzd[, .(tips_cd, nosaukums, N)]) |>
+  tab_header("Adresācijas objekti VZD Adrešu reģistra datos") |>
+  cols_label(
+    tips_cd = "Kods",
+    nosaukums = "Adresācijas objekta tips",
+    N = "Skaits"
+  ) |>
+  grand_summary_rows(
+    columns = "N",
+    fns = Kopā ~ sum(.),
+    fmt = ~ fmt_number(., decimals = 0)
+  ) |>
+  fmt_number(decimals = 0) |>
+  tab_options(
+    # table.width = pct(100),
     quarto.disable_processing = TRUE
   )
 ```

@@ -437,12 +437,21 @@ setkey(frame_majo_vzd, adr_kods_eka, adr_kods)
 frame_majo_vzd[, dziv_sk := .N - 1, by = .(adr_kods_eka)]
 frame_majo_vzd[, .N, keyby = .(dziv_sk)]
 
-frame_majo_vzd[, .N, keyby = .(tips_cd, dziv_sk > 0)]
-
 # Ēkas ir lielāko dzīvokļu skaitu
 frame_majo_vzd[tips_cd == "108", .(adr_kods, adrese, dziv_sk)][order(-dziv_sk)][1:10]
 # Pārbaudīt https://balticmaps.eu/
 # Mēdz būt garāžas
+
+# Ziņojumam
+tab_majo_vzd <- frame_majo_vzd[
+  ,
+  .N,
+  keyby = .(tips_cd, dziv_sk > 0)
+]
+tab_majo_vzd[tips_cd == "108" & !dziv_sk, nosaukums := "Ēka ar vienu dzīvokli"]
+tab_majo_vzd[tips_cd == "108" &  dziv_sk, nosaukums := "Ēka ar vairākiem dzīvokļiem"]
+tab_majo_vzd[tips_cd == "109",            nosaukums := "Telpu grupa (dzīvoklis)"]
+tab_majo_vzd
 
 # save(
 #   frame_majo_vzd,
@@ -459,3 +468,9 @@ fwrite(
 #   x = frame_majo_vzd,
 #   sink = file.path(config::get("dir.data"), "frame_majo_vzd.parquet")
 # )
+
+fwrite(
+  x = tab_majo_vzd,
+  file = file.path(config::get("dir.data"), "tab_majo_vzd.csvy"),
+  yaml = TRUE
+)
