@@ -7,6 +7,9 @@ format:
   html:
     embed-resources: true
     page-layout: full
+    toc: true
+    toc-depth: 2
+    toc-title: Satura rādītājs
 execute:
   echo: false
 lang: lv-LV
