@@ -32,31 +32,20 @@ system2(command = "file", args = flist)
 namelist <- tolower(gsub(".*/|.CSV", "", flist))
 namelist
 
-# readlist <- paste("iconv -f ISO-8859-13 -t UTF-8", file.path(getwd(), flist))
-# readlist
-
-# tmp <- fread(file = flist[1], quote = "#", encoding = "UTF-8")
-# tmp
-# 
-# tmp <- fread(file = flist[1], quote = "#", encoding = "Latin-1")
-# tmp
-# 
-# tmp <- fread("iconv -f ISO-8859-13 -t UTF-8 /home/djhurio/Dropbox/Darbs/ESS9-LV-2018-2019/ESS9-LV/data/VZD/AK_20181211/csv/AW_CIEMS.CSV",
-#              quote = "#")
-# tmp
-
 # Test
 dat <- fread(file = flist[1], quote = "#")
 
 # Read all files
 dat <- lapply(
   flist,
-  function(x) fread(
-    file = x,
-    quote = "#",
-    colClasses = "character",
-    integer64 = "character"
-  )
+  function(x) {
+    fread(
+      file = x,
+      quote = "#",
+      colClasses = "character",
+      integer64 = "character"
+    )
+  }
 )
 
 length(dat)

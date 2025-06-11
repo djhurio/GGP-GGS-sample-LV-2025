@@ -91,8 +91,17 @@ aw_eka[, koord_y := as.numeric(koord_y)]
 frame_eka <- aw_eka[
   statuss == "EKS",
   .(
-    kods, tips_cd, vkur_cd, vkur_tips, nosaukums, sort_nos, atrib,
-    koord_x, koord_y, dd_n, dd_e
+    kods,
+    tips_cd,
+    vkur_cd,
+    vkur_tips,
+    nosaukums,
+    sort_nos,
+    atrib,
+    koord_x,
+    koord_y,
+    dd_n,
+    dd_e
   )
 ]
 
@@ -126,8 +135,6 @@ aw_ter[, .N, keyby = .(statuss)]
 # 2:     EKS 24735
 # 3:     ERR  2472
 
-
-
 # Ielas un teritorijas ####
 frame_ter <- aw_ter[
   statuss == "EKS",
@@ -149,7 +156,7 @@ setnames(tab0, vnames, paste0(vnames, 0))
 
 for (i in 1:10) {
   cat(i, "\n")
-  
+
   setnames(tab, 1 + seq_along(vnames), paste0(vnames, i))
 
   tab0 <- merge(
@@ -224,11 +231,13 @@ tab4 <- Reduce(
 )
 
 tab4[, .N, keyby = .(tips_cd)]
-tab4[, tips_cd := factor(
-  x = tips_cd,
-  levels = c(104:107, 113),
-  labels = c("pilseta", "pagasts", "ciems", "iela", "novads")
-)]
+tab4[,
+  tips_cd := factor(
+    x = tips_cd,
+    levels = c(104:107, 113),
+    labels = c("pilseta", "pagasts", "ciems", "iela", "novads")
+  )
+]
 tab4[, .N, keyby = .(tips_cd)]
 
 setnames(
@@ -244,24 +253,34 @@ tab5 <- dcast.data.table(
 )
 tab5
 
-tab5[, .N, keyby = .(is.na(ATVK_novads), is.na(ATVK_pilseta), is.na(ATVK_pagasts))]
+tab5[,
+  .N,
+  keyby = .(is.na(ATVK_novads), is.na(ATVK_pilseta), is.na(ATVK_pagasts))
+]
 
 tab5[!is.na(ATVK_novads), ATVK_L1 := ATVK_novads]
-tab5[ is.na(ATVK_novads), ATVK_L1 := ATVK_pilseta]
+tab5[is.na(ATVK_novads), ATVK_L1 := ATVK_pilseta]
 tab5[, .N, keyby = .(ATVK_L1)]
 
 tab5[!is.na(ATVK_novads) & !is.na(ATVK_pilseta), ATVK_L2 := ATVK_pilseta]
 tab5[!is.na(ATVK_novads) & !is.na(ATVK_pagasts), ATVK_L2 := ATVK_pagasts]
 
-tab5[, c("ATVK_pilseta", "ATVK_pagasts", "ATVK_ciems", "ATVK_iela", "ATVK_novads") := NULL]
+tab5[,
+  c(
+    "ATVK_pilseta",
+    "ATVK_pagasts",
+    "ATVK_ciems",
+    "ATVK_iela",
+    "ATVK_novads"
+  ) := NULL
+]
 
 frame_ter
 tab5
 
 
 paste2 <- function(x) paste(x[!is.na(x)], collapse = ", ")
-tab5[
-  ,
+tab5[,
   adrese0 := paste2(c(nos_pilseta, nos_ciems, nos_pagasts, nos_novads)),
   by = .(kods)
 ]
@@ -283,14 +302,16 @@ frame_dziv
 # Ēku nosaukumi bez cipariem
 frame_eka[!grepl("[0-9]", nosaukums)]
 frame_eka[!grepl("[0-9]", nosaukums) & sort_nos != nosaukums]
-frame_eka[!grepl("[0-9]", nosaukums),  sort_nos := nosaukums]
+frame_eka[!grepl("[0-9]", nosaukums), sort_nos := nosaukums]
 frame_eka[!grepl("[0-9]", nosaukums) & sort_nos != nosaukums]
 
 
 # Ēku nosaukumi ar cipariem
 frame_eka[grepl("[0-9]", nosaukums) & !grepl("[0-9]{4}", nosaukums)]
 frame_eka[
-  grepl("[0-9]", nosaukums) & !grepl("[0-9]{4}", nosaukums) & sort_nos == nosaukums,
+  grepl("[0-9]", nosaukums) &
+    !grepl("[0-9]{4}", nosaukums) &
+    sort_nos == nosaukums,
   .(kods, nosaukums, sort_nos)
 ]
 
@@ -320,7 +341,7 @@ aw_geo
 
 # aw_geo[, koord_x := as.numeric(koord_x)]
 # aw_geo[, koord_y := as.numeric(koord_y)]
-# 
+#
 # frame_eka <- merge(x = frame_eka, y = aw_geo,
 #                     by.x = "kods", by.y = "vieta_cd",
 #                     all.x = T)
@@ -328,9 +349,18 @@ frame_eka[is.na(koord_x) | is.na(koord_y)]
 
 
 # Ēkas nosaukums + pasta indekss
-tab <- frame_eka[
-  ,
-  .(kods, nos_eka, nos_eka_sort, pasts, vkur_cd_eka, koord_x, koord_y, dd_e, dd_n)
+tab <- frame_eka[,
+  .(
+    kods,
+    nos_eka,
+    nos_eka_sort,
+    pasts,
+    vkur_cd_eka,
+    koord_x,
+    koord_y,
+    dd_e,
+    dd_n
+  )
 ]
 tab
 
@@ -383,21 +413,24 @@ frame_majo[, .N, keyby = .(tips_cd_ter)]
 frame_majo[, .N, keyby = .(tips_cd, tips_cd_ter == "107")]
 
 # Ēka
-frame_majo[tips_cd == "108", adrese1  := nos_eka]
+frame_majo[tips_cd == "108", adrese1 := nos_eka]
 frame_majo[tips_cd == "108", adrese1s := nos_eka_sort]
 # Dzīvoklis
-frame_majo[tips_cd == "109", adrese1  := paste(nos_eka, nos_dziv, sep = " - ")]
-frame_majo[tips_cd == "109", adrese1s := paste(nos_eka_sort, nos_dziv_sort, sep = " - ")]
+frame_majo[tips_cd == "109", adrese1 := paste(nos_eka, nos_dziv, sep = " - ")]
+frame_majo[
+  tips_cd == "109",
+  adrese1s := paste(nos_eka_sort, nos_dziv_sort, sep = " - ")
+]
 
 # Ir iela
-frame_majo[tips_cd_ter == "107", adrese2  := paste(nos_iela, adrese1)]
+frame_majo[tips_cd_ter == "107", adrese2 := paste(nos_iela, adrese1)]
 frame_majo[tips_cd_ter == "107", adrese2s := paste(nos_iela, adrese1s)]
 # Nav ielas
-frame_majo[tips_cd_ter != "107", adrese2  := adrese1]
+frame_majo[tips_cd_ter != "107", adrese2 := adrese1]
 frame_majo[tips_cd_ter != "107", adrese2s := adrese1s]
 
 # Adrese
-frame_majo[, adrese      := paste(adrese2,  adrese0, pasts, sep = ", ")]
+frame_majo[, adrese := paste(adrese2, adrese0, pasts, sep = ", ")]
 frame_majo[, adrese_sort := paste(adrese2s, adrese0, pasts, sep = ", ")]
 
 del_varl <- grep("^adrese[0-9]", names(frame_majo), value = T)
@@ -410,11 +443,10 @@ tab <- frame_majo[sample(.N, 10), .(adr_kods, adrese)]
 fwrite(tab, file = file.path(config::get("dir.data"), "tab.csv"))
 # Pārbaudīt https://www.kadastrs.lv/ vai adrese ir pareizi izveidota
 
-frame_majo[ is.na(ATVK_L2), ATVK_code := ATVK_L1]
+frame_majo[is.na(ATVK_L2), ATVK_code := ATVK_L1]
 frame_majo[!is.na(ATVK_L2), ATVK_code := ATVK_L2]
 
-frame_majo_vzd <- frame_majo[
-  ,
+frame_majo_vzd <- frame_majo[,
   .(
     adr_kods,
     adr_kods_eka,
@@ -438,19 +470,23 @@ frame_majo_vzd[, dziv_sk := .N - 1, by = .(adr_kods_eka)]
 frame_majo_vzd[, .N, keyby = .(dziv_sk)]
 
 # Ēkas ir lielāko dzīvokļu skaitu
-frame_majo_vzd[tips_cd == "108", .(adr_kods, adrese, dziv_sk)][order(-dziv_sk)][1:10]
+frame_majo_vzd[tips_cd == "108", .(adr_kods, adrese, dziv_sk)][order(-dziv_sk)][
+  1:10
+]
 # Pārbaudīt https://balticmaps.eu/
 # Mēdz būt garāžas
 
 # Ziņojumam
-tab_majo_vzd <- frame_majo_vzd[
-  ,
+tab_majo_vzd <- frame_majo_vzd[,
   .N,
   keyby = .(tips_cd, dziv_sk > 0)
 ]
 tab_majo_vzd[tips_cd == "108" & !dziv_sk, nosaukums := "Ēka ar vienu dzīvokli"]
-tab_majo_vzd[tips_cd == "108" &  dziv_sk, nosaukums := "Ēka ar vairākiem dzīvokļiem"]
-tab_majo_vzd[tips_cd == "109",            nosaukums := "Telpu grupa (dzīvoklis)"]
+tab_majo_vzd[
+  tips_cd == "108" & dziv_sk,
+  nosaukums := "Ēka ar vairākiem dzīvokļiem"
+]
+tab_majo_vzd[tips_cd == "109", nosaukums := "Telpu grupa (dzīvoklis)"]
 tab_majo_vzd
 
 # save(

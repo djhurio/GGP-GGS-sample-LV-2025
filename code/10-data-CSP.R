@@ -19,7 +19,8 @@ gc()
 # Read CSP frame
 frame.csp <- fread(
   file = file.path(config::get("dir.data.csp"), "Ietvars_01042025_LU.csv")
-) |> setnames(tolower)
+) |>
+  setnames(tolower)
 
 frame.csp
 
