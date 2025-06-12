@@ -1,7 +1,8 @@
 # Population frame
 
 # Packages
-require(data.table)
+library(purrr)
+library(data.table)
 
 # Reset ####
 rm(list = ls())
@@ -11,13 +12,15 @@ gc()
 frame_csp <- fread(
   file = file.path(config::get("dir.data"), "frame_csp.csvy.gz"),
   yaml = TRUE
-)
+) |>
+  setkey(adr_kods)
 
 # VZD dati
 frame_vzd <- fread(
   file = file.path(config::get("dir.data"), "frame_vzd.csvy.gz"),
   yaml = TRUE
-)
+) |>
+  setkey(adr_kods)
 
 # Noņem dubultās pēdiņas
 # frame_vzd[grep('""', adrese), .(adrese)]
@@ -28,44 +31,102 @@ frame_vzd[, adrese := gsub('""', '"', adrese)]
 map(frame_csp, class) |> unlist()
 map(frame_vzd, class) |> unlist()
 
-stopifnot(!anyDuplicated(frame_csp, by = "adr_kods"))
-stopifnot(!anyDuplicated(frame_vzd, by = "adr_kods"))
+stopifnot(key(frame_csp) == key(frame_vzd))
+
+stopifnot(!anyDuplicated(frame_csp, by = key(frame_csp)))
+stopifnot(!anyDuplicated(frame_vzd, by = key(frame_vzd)))
 
 stopifnot(all(frame_csp$adr_kods %in% frame_vzd$adr_kods))
 
 # Veido GGS ietvaru
 frame_ggs <- merge(
-  x = frame_csp[vc1859_sum > 0, .(adr_kods, pers_sk, vc1859_sum)],
-  y = frame_vzd,
-  by = "adr_kods",
-  all.x = TRUE
+  x = frame_vzd,
+  y = frame_csp,
+  all = TRUE
 )
 
-stopifnot(frame_ggs[, .N] == frame_csp[vc1859_sum > 0, .N])
+stopifnot(frame_ggs[, .N] == frame_vzd[, .N])
+stopifnot(frame_ggs[!is.na(pers_sk), .N] == frame_csp[, .N])
+stopifnot(frame_ggs[!is.na(pers_sk_1859), .N] == frame_csp[, .N])
 
-frame_ggs[,
-  .(majo_sk = .N, pers_sk = sum(vc1859_sum)),
+frame_ggs[, frame_csp := !is.na(pers_sk)]
+
+frame_ggs[
+  (frame_csp),
+  .(
+    majo_sk = .N,
+    pers_sk = sum(pers_sk),
+    pers_sk_1859 = sum(pers_sk_1859)
+  ),
   keyby = .(tips_cd, tips_cd_nos)
 ]
 
+# Ziņojumam
+frame_ggs_ciemi <- frame_ggs[(frame_csp) & !tips_cd %in% 108:109]
+fwrite(
+  x = frame_ggs_ciemi,
+  file = file.path(config::get("dir.data"), "frame_ggs_ciemi.csvy.gz"),
+  yaml = TRUE
+)
+
+# Atlasa tikai zemi, ēkas un telpu grupas
+pop_n <- frame_csp[, sum(pers_sk_1859)]
+pop_n_uc <- frame_ggs_ciemi[, sum(pers_sk_1859)]
+
+# UC rate
+pop_n_uc / pop_n
+
+frame_ggs <- frame_ggs[tips_cd %in% 108:109]
+
 frame_ggs[
-  tips_cd == 108L & dziv_sk > 0L,
-  .(majo_sk = .N, pers_sk = sum(vc1859_sum))
+  (frame_csp),
+  .(
+    majo_sk = .N,
+    pers_sk = sum(pers_sk),
+    pers_sk_1859 = sum(pers_sk_1859)
+  ),
+  keyby = .(tips_cd, tips_cd_nos)
+]
+
+stopifnot(frame_ggs[(frame_csp), sum(pers_sk_1859)] == pop_n - pop_n_uc)
+
+
+# Dzēšam tukšās ēkas
+frame_ggs |>
+  setorder(adr_kods_eka, tips_cd, sort_nos) |>
+  setkey(adr_kods_eka) |>
+  setcolorder()
+frame_ggs
+
+frame_ggs[, frame_csp_eka := any(frame_csp), by = .(adr_kods_eka)]
+frame_ggs[, .N, keyby = .(frame_csp_eka, frame_csp)]
+
+frame_ggs <- frame_ggs[(frame_csp_eka)]
+frame_ggs[, .N, keyby = .(frame_csp_eka, frame_csp)]
+frame_ggs[, frame_csp_eka := NULL]
+
+
+# Personas, kas ir deklarētas ēkā, kurā ir arī dzīvokļi
+frame_ggs[
+  tips_cd == 108L & dziv_sk > 0L & pers_sk_1859 > 0L,
+  .(eku_sk = .N, pers_sk_1859 = sum(pers_sk_1859))
 ]
 frame_ggs[tips_cd == 108L & dziv_sk > 0]
 
 # Atzīmē daudzdzīvokļu ēkas (un visus tās dzīvokļus),
-# kuras nav kolektīvās un kurās ēkas līmenī ir deklarētās personas
+# kurās ēkas līmenī ir deklarētās personas
 frame_ggs[,
-  problem := any(tips_cd == 108L & dziv_sk > 0),
+  problem := any(
+    tips_cd == 108L & dziv_sk > 0L & !is.na(pers_sk_1859) & pers_sk_1859 > 0L
+  ),
   by = .(adr_kods_eka)
 ]
 frame_ggs[, .N, keyby = .(problem, tips_cd)]
 
 frame_ggs[
   (problem),
-  .(adr_kods_eka, dziv_sk, adrese, vc1859_sum)
-][order(adr_kods_eka)]
+  .(adr_kods_eka, dziv_sk, pers_sk_1859, adrese)
+][adr_kods_eka %in% sample(unique(adr_kods_eka), 3)]
 
 frame_ggs[, sum_dekl := sum(dekl), by = .(adr_kods_eka)]
 
