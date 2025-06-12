@@ -30,26 +30,26 @@ library(data.table)
 library(gt)
 library(purrr)
 
-frame.csp <- fread(
-  file = file.path(config::get("dir.data"), "frame_csp.ycsv.gz"),
+frame_csp <- fread(
+  file = file.path(config::get("dir.data"), "frame_csp.csvy.gz"),
   yaml = TRUE
 )
 
 # Trim
-frame.csp[, pers_kopa_trim := fifelse(pers_sk    < 10L, pers_sk,    10L)]
-frame.csp[, pers_1859_trim := fifelse(vc1859_sum < 10L, vc1859_sum, 10L)]
+frame_csp[, pers_kopa_trim := fifelse(pers_sk    < 10L, pers_sk,    10L)]
+frame_csp[, pers_1859_trim := fifelse(vc1859_sum < 10L, vc1859_sum, 10L)]
 
-frame.csp[, pers_kopa_trim := factor(pers_kopa_trim, 0:10, c(0:9, "10+"))]
-frame.csp[, pers_1859_trim := factor(pers_1859_trim, 0:10, c(0:9, "10+"))]
+frame_csp[, pers_kopa_trim := factor(pers_kopa_trim, 0:10, c(0:9, "10+"))]
+frame_csp[, pers_1859_trim := factor(pers_1859_trim, 0:10, c(0:9, "10+"))]
 
-oc.rate <- frame.csp[, round(100 * sum(vc1859_sum == 0L) / .N, 1)]
+oc.rate <- frame_csp[, round(100 * sum(vc1859_sum == 0L) / .N, 1)]
 ```
 
 Katram mājoklim ir zināms kopīgais pastāvīgo iedzīvotāju skaits, kā arī iedzīvotāju skaits vecumā 18--59 gadi, kas ir GGS mērķa populācija.
 
-Ietvarā ir `r frame.csp[, prettyNum(.N, big.mark = ",")]` mājokļi, no kuriem `r frame.csp[, prettyNum(sum(vc1859_sum == 0L), big.mark = ",")]` (`r oc.rate` %) mājokļos nav reģistrēta neviena persona vecumā 18--59 gadi.
+Ietvarā ir `r frame_csp[, prettyNum(.N, big.mark = ",")]` mājokļi, no kuriem `r frame_csp[, prettyNum(sum(vc1859_sum == 0L), big.mark = ",")]` (`r oc.rate` %) mājokļos nav reģistrēta neviena persona vecumā 18--59 gadi.
 
-**Ierosinājums (saskaņots 2025-06-10):** GGS populācijas ietvarā ietvert tikai tos privātos mājokļus, kuros ir reģistrēta vismaz viena persona vecumā 18--59 gadi. Tādi kopā ir `r prettyNum(frame.csp[, sum(vc1859_sum > 0L)], big.mark = ",")` mājokļi.
+**Ierosinājums (saskaņots 2025-06-10):** GGS populācijas ietvarā ietvert tikai tos privātos mājokļus, kuros ir reģistrēta vismaz viena persona vecumā 18--59 gadi. Tādi kopā ir `r prettyNum(frame_csp[, sum(vc1859_sum > 0L)], big.mark = ",")` mājokļi.
 
 **Apsvērumi:**
 
@@ -57,36 +57,36 @@ Ietvarā ir `r frame.csp[, prettyNum(.N, big.mark = ",")]` mājokļi, no kuriem 
 - Ir jāņem vērā, ka šādā veidā mēs potenciāli palielinām GGS mērķa populācijas nenoklājumu (personas vecumā 18--59 gadi), jo diezgan droši daļā no izslēgtajiem mājokļiem būs tādi, kuros faktiski dzīvo GGS mērķa populācijai piederošas personas. Šobrīd nav iespējams novērtēt ietekmi uz nenoklājumu. Mērķa populācijas kopīgo nenoklājumu var vērtēt pēc GGS apsekojuma datu savākšanas.
 
 ```{r CSP tables}
-tab.frame.csp <- frame.csp[, .(n = .N), keyby = .(pers_kopa_trim, pers_1859_trim)]
-tab.frame.csp[, p := prop.table(n)]
+tab_csp <- frame_csp[, .(n = .N), keyby = .(pers_kopa_trim, pers_1859_trim)]
+tab_csp[, p := prop.table(n)]
 
-tab.frame.csp <- rbindlist(
+tab_csp <- rbindlist(
   list(
-    tab.frame.csp,
-    tab.frame.csp[, map(.SD, sum), .SDcols = c("n", "p"), keyby = .(pers_kopa_trim)],
-    tab.frame.csp[, map(.SD, sum), .SDcols = c("n", "p"), keyby = .(pers_1859_trim)],
-    tab.frame.csp[, map(.SD, sum), .SDcols = c("n", "p")]
+    tab_csp,
+    tab_csp[, map(.SD, sum), .SDcols = c("n", "p"), keyby = .(pers_kopa_trim)],
+    tab_csp[, map(.SD, sum), .SDcols = c("n", "p"), keyby = .(pers_1859_trim)],
+    tab_csp[, map(.SD, sum), .SDcols = c("n", "p")]
   ),
   fill = TRUE
 )
 
-tab.frame.csp[is.na(pers_kopa_trim), pers_kopa_trim := "Kopā"]
-tab.frame.csp[is.na(pers_1859_trim), pers_1859_trim := "Kopā"]
+tab_csp[is.na(pers_kopa_trim), pers_kopa_trim := "Kopā"]
+tab_csp[is.na(pers_1859_trim), pers_1859_trim := "Kopā"]
 
-tab.frame.csp.n <- dcast.data.table(
-  tab.frame.csp,
+tab_csp_n <- dcast.data.table(
+  tab_csp,
   pers_kopa_trim ~ pers_1859_trim,
   value.var = "n"
 )
 
-tab.frame.csp.p <- dcast.data.table(
-  tab.frame.csp,
+tab_csp_p <- dcast.data.table(
+  tab_csp,
   pers_kopa_trim ~ pers_1859_trim,
   value.var = "p"
 )
 
-gt(tab.frame.csp.n) |>
-  tab_header("Privāto mājokļu skaits") |>
+gt(tab_csp_n) |>
+  tab_caption("Privāto mājokļu skaits") |>
   tab_spanner(
     label = "Mājokļa personu skaits vecumā 18-59",
     columns = matches("\\d")
@@ -108,8 +108,8 @@ gt(tab.frame.csp.n) |>
     quarto.disable_processing = TRUE
   )
 
-gt(tab.frame.csp.p) |>
-  tab_header("Privāto mājokļu skaita īpatsvars") |>
+gt(tab_csp_p) |>
+  tab_caption("Privāto mājokļu skaita īpatsvars") |>
   tab_spanner(
     label = "Mājokļa personu skaits vecumā 18-59",
     columns = matches("\\d")
@@ -138,20 +138,20 @@ VZD dati tiek iegūti no <a href="https://data.gov.lv/dati/lv/dataset/valsts-adr
 
 
 ```{r VZD}
-tab_majo_vzd <- fread(
-  file = file.path(config::get("dir.data"), "tab_majo_vzd.csvy"),
+tab_vzd <- fread(
+  file = file.path(config::get("dir.data"), "tab_vzd.csvy"),
   yaml = TRUE
 )
 ```
 
-Kopā VZD datos pēc datu apstrādes ir `r tab_majo_vzd[, prettyNum(sum(N), big.mark = ",")]` adresācijas objekti, kas ietver ēkas un telpu grupas (dzīvokļus). Ņemt vērā, ka šie dati satur visus adresācijas objektus - tai skaitā industriālās ēkas un neapdzīvotus mājokļus.
+Kopā VZD datos pēc datu apstrādes ir `r tab_vzd[, prettyNum(sum(N), big.mark = ",")]` adresācijas objekti, kas ietver ēkas un telpu grupas (dzīvokļus). Ņemt vērā, ka šie dati satur visus adresācijas objektus - tai skaitā industriālās ēkas un neapdzīvotus mājokļus.
 
 ```{r VZD table}
-gt(tab_majo_vzd[, .(tips_cd, nosaukums, N)]) |>
-  tab_header("Adresācijas objekti VZD Adrešu reģistra datos") |>
+gt(tab_vzd) |>
+  tab_caption("Adresācijas objekti VZD Adrešu reģistra datos") |>
   cols_label(
     tips_cd = "Kods",
-    nosaukums = "Adresācijas objekta tips",
+    tips_cd_nos = "Adresācijas objekta tips",
     N = "Skaits"
   ) |>
   grand_summary_rows(

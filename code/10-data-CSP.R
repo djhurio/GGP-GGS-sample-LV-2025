@@ -17,18 +17,18 @@ gc()
 
 
 # Read CSP frame
-frame.csp <- fread(
+frame_csp <- fread(
   file = file.path(config::get("dir.data.csp"), "Ietvars_01042025_LU.csv")
 ) |>
   setnames(tolower)
 
-frame.csp
+frame_csp
 
 # Replace NA with 0
-frame.csp[is.na(vc1859_sum), vc1859_sum := 0L]
+frame_csp[is.na(vc1859_sum), vc1859_sum := 0L]
 
 fwrite(
-  x = frame.csp,
-  file = file.path(config::get("dir.data"), "frame_csp.ycsv.gz"),
+  x = frame_csp,
+  file = file.path(config::get("dir.data"), "frame_csp.csvy.gz"),
   yaml = TRUE
 )
