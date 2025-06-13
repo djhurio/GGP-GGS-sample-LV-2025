@@ -1,6 +1,14 @@
 # Ģeneralizētas teritoriālo vienību robežas
 # Territorial_units_LV_1.2m_(2024.01.01.).zip
-# https://data.gov.lv/dati/dataset/robezas/resource/49c1b275-efd5-4784-af87-5182397bd453
+# https://data.gov.lv/dati/dataset/robezas
+
+dir.create(
+  file.path(
+    config::get("dir.data"),
+    "geo"
+  ),
+  showWarnings = FALSE
+)
 
 # Lejuplāde un atarhivēšana
 download.file(
@@ -11,6 +19,7 @@ download.file(
   ),
   destfile = file.path(
     config::get("dir.data"),
+    "geo",
     "territorial_units_lv_1.2m.zip"
   )
 )
@@ -18,15 +27,18 @@ download.file(
 unzip(
   zipfile = file.path(
     config::get("dir.data"),
+    "geo",
     "territorial_units_lv_1.2m.zip"
   ),
   exdir = file.path(
-    config::get("dir.data")
+    config::get("dir.data"),
+    "geo"
   )
 )
 
 
 # Pilsētu apkaimes
+# https://data.gov.lv/dati/lv/dataset/apkaimes
 
 # Pilsētu apkaimju robežas, kas papildinātas ar CSP statistisko datu publicēšanā izmantotajiem teritoriju kodiem.
 # - Rīgai izmantoti Latvijas Atvērto datu portālā publicētie dati,
@@ -44,6 +56,7 @@ download.file(
   ),
   destfile = file.path(
     config::get("dir.data"),
+    "geo",
     "apkaimes.zip"
   )
 )
@@ -51,6 +64,7 @@ download.file(
 dir.create(
   file.path(
     config::get("dir.data"),
+    "geo",
     "apkaimes"
   ),
   showWarnings = FALSE
@@ -59,10 +73,12 @@ dir.create(
 unzip(
   zipfile = file.path(
     config::get("dir.data"),
+    "geo",
     "apkaimes.zip"
   ),
   exdir = file.path(
     config::get("dir.data"),
+    "geo",
     "apkaimes"
   )
 )

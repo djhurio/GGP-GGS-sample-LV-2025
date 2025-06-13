@@ -40,6 +40,8 @@ frame_dziv <- aw_dziv[,
     adr_kods_eka = vkur_cd,
     tips_cd,
     statuss,
+    apstipr,
+    apst_pak,
     sort_nos,
     adrese = std
   )
@@ -48,8 +50,6 @@ frame_dziv <- aw_dziv[,
 if (anyDuplicated(frame_dziv, by = "adr_kods")) {
   stop("dubl dziv")
 }
-
-frame_dziv[, dziv_sk := .N, by = .(adr_kods_eka)]
 
 
 # Ēkas un zemes ####
@@ -98,6 +98,10 @@ frame_eka <- aw_eka[,
     adr_kods_eka = kods,
     tips_cd,
     statuss,
+    apstipr,
+    apst_pak,
+    for_build,
+    plan_adr,
     adrese = std,
     koord_x,
     koord_y,
@@ -133,12 +137,13 @@ aw_ter[, .N, keyby = .(statuss)]
 # 3:     ERR  2472
 
 # Ielas un teritorijas ####
-frame_ter <- aw_ter[
-  statuss == "EKS",
+frame_ter <- aw_ter[,
   .(
     adr_kods = kods,
     tips_cd,
     statuss,
+    apstipr,
+    apst_pak,
     adrese = std
   )
 ]
@@ -154,18 +159,6 @@ frame_dziv <- merge(
   by = "adr_kods_eka",
   all.x = TRUE
 )
-
-
-# Ēkām pievieno dzīvokļu skaitu
-unique(frame_dziv[, .(adr_kods = adr_kods_eka, dziv_sk)])
-
-frame_eka <- merge(
-  x = frame_eka,
-  y = unique(frame_dziv[, .(adr_kods = adr_kods_eka, dziv_sk)]),
-  by = "adr_kods",
-  all.x = TRUE
-)
-frame_eka[is.na(dziv_sk), dziv_sk := 0L]
 
 
 # Apvieno teritorijas, zemes, ēkas un telpu grupas
@@ -210,23 +203,9 @@ frame_vzd[,
 
 frame_vzd[, .N, keyby = .(tips_cd, tips_cd_nos)]
 
-# Ēkas ir lielāko dzīvokļu skaitu
-frame_vzd[tips_cd == "108", .(adr_kods, adrese, dziv_sk)][order(-dziv_sk)][
-  1:10
-]
-# Pārbaudīt https://balticmaps.eu/
-# Mēdz būt garāžas
-
-# # Adreses labošana
-# frame_vzd[grep("  ", adrese), .(adrese)]
-# frame_vzd[, adrese := gsub("  ", " ", adrese)]
-# frame_vzd[grep("  ", adrese), .(adrese)]
-
-# frame_vzd[grep(" Rīga, LV", adrese), .(adrese)]
-
+# Sakārto
 setkey(frame_vzd, adr_kods)
 setcolorder(frame_vzd)
-
 
 # Save
 fwrite(
