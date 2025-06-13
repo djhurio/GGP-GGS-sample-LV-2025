@@ -2,8 +2,9 @@
 
 sort.DT <- function(
   DT,
-  coords = c("koord_x", "koord_y"),
-  method = "arbitrary_insertion"
+  coords = c("koord_y", "koord_x"),
+  method = "arbitrary_insertion",
+  ord.name = "i"
 ) {
   tour <- solve_TSP(
     ETSP(
@@ -12,41 +13,63 @@ sort.DT <- function(
     method = method
   )
   dat <- copy(DT[tour])
-  dat[, i := .I]
+  dat[, c(ord.name) := .(.I)]
   return(dat[])
 }
 
 sort.DT.by <- function(
   DT,
   by,
-  coords = c("koord_x", "koord_y"),
-  method = "arbitrary_insertion"
+  coords = c("koord_y", "koord_x"),
+  method = "arbitrary_insertion",
+  ord.name = "i"
 ) {
   by.values <- unique(DT[, get(by)])
-  return(rbindlist(purrr::map(
+  dat <- rbindlist(purrr::map(
     by.values,
     function(x) {
       sort.DT(
         DT = DT[get(by) == x],
         coords = coords,
-        method = method
+        method = method,
+        ord.name = ord.name
       )
     }
-  )))
+  ))
+  dat[, c(ord.name) := .(.I)]
+  return(dat[])
 }
 
 plot.DT <- function(
   DT,
-  coords = c("koord_x", "koord_y"),
+  coords = c("koord_y", "koord_x"),
   group = NULL,
   colour = NULL,
   size = NULL,
   title = NULL,
   subtitle = NULL
 ) {
-  ggplot(DT, aes_string(x = coords[1], y = coords[2], group = group)) +
-    geom_point(aes_string(colour = colour, size = size)) +
-    geom_path(linetype = "dashed") +
+  # Convert character column names to symbols
+  # x <- sym(coords[1])
+  # y <- sym(coords[2])
+
+  aes_mapping <- aes(x = !!sym(coords[1]), y = !!sym(coords[2]))
+
+  if (!is.null(group)) {
+    aes_mapping$group <- sym(group)
+  }
+
+  point_aes <- list()
+  if (!is.null(colour)) {
+    point_aes$colour <- sym(colour)
+  }
+  if (!is.null(size)) {
+    point_aes$size <- sym(size)
+  }
+
+  p <- ggplot(DT, aes_mapping) +
+    geom_point(do.call(aes, point_aes)) +
+    geom_polygon(linetype = "dashed", fill = NA, colour = "black") +
     coord_fixed() +
     ggtitle(label = title, subtitle = subtitle) +
     theme_bw() +
@@ -55,12 +78,14 @@ plot.DT <- function(
       axis.text = element_blank(),
       axis.ticks = element_blank()
     )
+
+  return(p)
 }
 
 plot.DT.by <- function(
   DT,
   by,
-  coords = c("koord_x", "koord_y"),
+  coords = c("koord_y", "koord_x"),
   group = NULL,
   colour = NULL,
   size = NULL,
