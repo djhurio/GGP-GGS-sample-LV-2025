@@ -137,7 +137,8 @@ aw_ter[, .N, keyby = .(statuss)]
 # 3:     ERR  2472
 
 # Ielas un teritorijas ####
-frame_ter <- aw_ter[,
+frame_ter <- aw_ter[
+  statuss == "EKS",
   .(
     adr_kods = kods,
     tips_cd,

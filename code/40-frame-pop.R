@@ -479,6 +479,5 @@ frame_majo[, .(majo_sk = .N, pers_sk = sum(pers_sk_1859))]
 fwrite(
   x = frame_majo,
   file = file.path(config::get("dir.data"), "frame_majo.csvy.gz"),
-  qmethod = "double",
   yaml = TRUE
 )
