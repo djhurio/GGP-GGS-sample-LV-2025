@@ -36,7 +36,7 @@ sort.DT.by <- function(
       )
     }
   ))
-  dat[, c(ord.name) := .(.I)]
+  # dat[, c(ord.name) := .(.I)]
   return(dat[])
 }
 
@@ -49,10 +49,6 @@ plot.DT <- function(
   title = NULL,
   subtitle = NULL
 ) {
-  # Convert character column names to symbols
-  # x <- sym(coords[1])
-  # y <- sym(coords[2])
-
   aes_mapping <- aes(x = !!sym(coords[1]), y = !!sym(coords[2]))
 
   if (!is.null(group)) {
@@ -76,7 +72,8 @@ plot.DT <- function(
     theme(
       axis.title = element_blank(),
       axis.text = element_blank(),
-      axis.ticks = element_blank()
+      axis.ticks = element_blank(),
+      legend.position = "none"
     )
 
   return(p)

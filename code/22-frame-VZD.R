@@ -34,6 +34,54 @@ aw_dziv[, .N, keyby = .(apstipr, apst_pak)]
 aw_dziv[, .N, keyby = .(vkur_tips)]
 # 1:       108 932251
 
+# Labojums `sort_nos`
+get_sort_nos <- function(nosaukums) {
+  stringr::str_replace_all(
+    nosaukums,
+    pattern = "\\d+",
+    replacement = function(x) stringr::str_pad(as.integer(x), 5, pad = "0")
+  )
+}
+get_sort_nos(c("1", "1/11", "1/1A", "9K", "123/4B", "12345", "123456"))
+
+anyDuplicated(aw_dziv[statuss == "EKS"], by = c("vkur_cd", "nosaukums"))
+tab_test <- aw_dziv[statuss == "EKS", .N, keyby = .(vkur_cd, nosaukums)][N > 1]
+aw_dziv[statuss == "EKS" & vkur_cd %in% tab_test$vkur_cd][order(
+  vkur_cd,
+  sort_nos
+)]
+
+# aw_dziv[statuss == "EKS", .N, keyby = .(nosaukums, sort_nos)]
+
+# Sagatavo labojumu
+# Lēna funkcija, tāpēc rēķinam alternatīvas tikai dzīvokļiem,
+# kas beidzas ar burtu
+aw_dziv[
+  statuss == "EKS" & grepl("[A-Z]$", nosaukums),
+  sort_nos_alt := get_sort_nos(nosaukums)
+]
+
+aw_dziv[
+  statuss == "EKS" & sort_nos != sort_nos_alt,
+  .(kods, nosaukums, sort_nos, sort_nos_alt, std)
+]
+
+# Labojums
+aw_dziv[sort_nos != sort_nos_alt, sort_nos := sort_nos_alt]
+
+anyDuplicated(aw_dziv[statuss == "EKS"], by = c("vkur_cd", "sort_nos"))
+tab_test <- aw_dziv[statuss == "EKS", .N, keyby = .(vkur_cd, sort_nos)][
+  N > 1
+]
+aw_dziv[
+  statuss == "EKS" &
+    vkur_cd %in% tab_test$vkur_cd &
+    sort_nos %in% tab_test$sort_nos
+][order(
+  vkur_cd,
+  sort_nos
+)]
+
 frame_dziv <- aw_dziv[,
   .(
     adr_kods = kods,
