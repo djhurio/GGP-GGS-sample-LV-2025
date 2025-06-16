@@ -258,6 +258,8 @@ frame_majo <- fread(
   file = file.path(config::get("dir.data"), "frame_majo_samp.csvy.gz"),
   yaml = TRUE
 )
+
+frame_majo[, adrese := gsub('""', '"', adrese)]
 ```
 
 Rezultātā GGS mājokļu ietvarā ir iekļauti **`r frame_majo[, prettyNum(.N, big.mark = ",")]` mājokļi**, kuros ir reģistrētas **`r frame_majo[, prettyNum(sum(pers_sk_1859), big.mark = ",")]` personas** vecumā 18--59 gadi.
@@ -399,7 +401,7 @@ leaflet(data = map_data) %>%
   addCircleMarkers(
     lng = ~dd_e,
     lat = ~dd_n,
-    radius = ~n,  # scale the radius based on n
+    radius = ~(1+log(n))*10,  # scale the radius based on n
     popup = ~popup_label,
     stroke = TRUE,
     fillOpacity = 0.7,
@@ -437,7 +439,7 @@ Izlases saraksts ir sagatavots divos formātos - CSV un XLSX. Abu failu saturs i
 | adrese           | Adrese (teksta formā)                                                    |
 | pers_sk_1859     | Pastāvīgo iedzīvotāju skaits vecumā 18–59 g.                             |
 | size             | Izlases vienības lielums (1-10)                                          |
-| sample_total     | Vai iekļauts kopējā izlasē (1 = jā, 0 = nē)                              |
+| sample_total     | Vai iekļauts kopējā izlasē (1 = jā)                              |
 | pik_total        | Iekļaušanas varbūtība kopējā izlasē                                      |
 | dw_st1_total     | Pirmās pakāpes plānojuma svars kopīgajai izlasei                         |
 | sample_main      | Vai iekļauts pamatizlasē (1 = jā, 0 = nē)                                |
