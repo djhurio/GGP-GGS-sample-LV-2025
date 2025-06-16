@@ -77,3 +77,36 @@ openxlsx2::write_xlsx(
   widths = "auto",
   overwrite = TRUE
 )
+
+frame_majo[, .(
+  n_pop = .N,
+  n_sam_total = sum(sample_total),
+  n_sam_main = sum(sample_main)
+)]
+
+frame_majo[,
+  .(
+    n_pop = .N,
+    n_sam_total = sum(sample_total),
+    n_sam_main = sum(sample_main)
+  ),
+  keyby = .(pil_lauk, pil_lauk_name)
+]
+
+frame_majo[,
+  .(
+    n_pop = .N,
+    n_sam_total = sum(sample_total),
+    n_sam_main = sum(sample_main)
+  ),
+  keyby = .(NUTS3_code, NUTS3_name)
+]
+
+frame_majo[,
+  .(
+    n_pop = .N,
+    n_sam_total = sum(sample_total),
+    n_sam_main = sum(sample_main)
+  ),
+  keyby = .(L0_code, L0_name)
+]

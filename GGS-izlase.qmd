@@ -29,6 +29,8 @@ No CSP ir saņemts privāto mājokļu ietvars, kas ietver visus Latvijas privāt
 library(data.table)
 library(gt)
 library(purrr)
+library(leaflet)
+library(leaflet.extras)
 
 frame_csp <- fread(
   file = file.path(config::get("dir.data"), "frame_csp.csvy.gz"),
@@ -253,10 +255,192 @@ frame_majo_del2[
 
 ```{r frame GGS}
 frame_majo <- fread(
-  file = file.path(config::get("dir.data"), "frame_majo.csvy.gz"),
+  file = file.path(config::get("dir.data"), "frame_majo_samp.csvy.gz"),
   yaml = TRUE
 )
 ```
 
 Rezultātā GGS mājokļu ietvarā ir iekļauti **`r frame_majo[, prettyNum(.N, big.mark = ",")]` mājokļi**, kuros ir reģistrētas **`r frame_majo[, prettyNum(sum(pers_sk_1859), big.mark = ",")]` personas** vecumā 18--59 gadi.
 
+# Mājokļu atlase
+
+## Atlases plānojums
+
+Izlase tiek veidota kā divpakāpju izlase, kur:
+
+- pirmajā pakāpē tiek veidota gadījuma privāto mājokļu izlase,
+- otrajā pakāpēc katrā izlases mājoklī tiek atlasīta viena persona ar vecumu 18-59 gadi.
+
+Ir nepieciešams sagatavot pamatizlasi ar apjomu 25000 mājokļi un rezerves izlasi ar apjomu 5000 mājokļi. Kopā abas izlases viedo kopīgo izlasi. Praksē sākumā tiek sagatavota kopīgā izlase ar apjomu 30000 mājokļi. Pamatilzase tiek veidota kā apakšizlase kopīgajai izlasei. Atlikums no kopīgās izlases ir rezerves izlase.
+
+## Pirmās pakāpes izlase
+
+Pirmās pakāpes izlases vienība ir privātais mājoklis, kurā ir reģistrēts vismaz viena pastāvīgs iedzīvotājs vecumā 18-59 gadi.
+
+Tiek izmantota tiešā stratifikācija pēc teritorijas tipa un administratīvā reģiona. Ir definēti četri teritoriju tipi:
+
+- Rīga,
+- Sešas valstspilsētas bez Rīgas, kas ir pašvaldības (Daugavpils, Jelgava, Jūrmala, Liepāja, Rēzekne, Ventspils),
+- Novadu valstspilsētas (Jēkabpils, Ogre, Valmiera) un pilsētas
+- Novadu pagasti.
+
+Ir pieci administratīvie reģioni - Latgale, Zemgale, Rīga, Kurzeme, Vidzeme. Kopā teritorijas tips un reģions veido 15 stratas.
+
+```{r sample allocation}
+frame_majo[,
+  .(
+    n_pop = .N,
+    n_sam_total = sum(sample_total),
+    n_sam_main = sum(sample_main),
+    n_sam_res = sum(sample_res)
+  ),
+  keyby = .(str_expl, pil_lauk_name, NUTS3_name)
+] |> gt() |>
+  tab_caption("Mājokļu tiešā stratifikācija") |>
+  cols_label(
+    str_expl = "Strata (tiešā)",
+    pil_lauk_name = "Teritorijas tips",
+    NUTS3_name = "Administratīvais reģions",
+    n_pop = "Mājokļu skaits ietvarā",
+    n_sam_total = "Mājokļu skaits kopīgajā izlasē",
+    n_sam_main = "Mājokļu skaits pamatizlasē",
+    n_sam_res = "Mājokļu skaits rezerves izlasē"
+  ) |>
+  grand_summary_rows(
+    columns = c("n_pop", "n_sam_total", "n_sam_main", "n_sam_res"),
+    fns = Kopā ~ sum(.),
+    fmt = ~ fmt_number(., decimals = 0)
+  ) |>
+  fmt_number(decimals = 0) |>
+  tab_options(
+    quarto.disable_processing = TRUE
+  )
+
+```
+
+Katrā tiešajā stratā mājokļi tiek sakārtoti sistemātiskās izlases vajadzībām. Mājokļi tiek sakārtoti pēc:
+
+- Administratīvās teritorijas (valstspilsētas un novadi),
+- Teritoriālās vienības (pilsētas un pagasti),
+- Pilsētu apkaimes (apkaimes ir definētas četrām valstspilsētām - Rīgai, Daugavpilij, Jūrmalai un Valmierai),
+- Ēkas,
+- Dzīvokļa nosaukuma (numura).
+
+Administratīvās teritorijas, teritoriālās vienības, pilsētu apkaimes, ēkas un dzīvokļi tiek kārtoti hierarhiski. Tas nozīmē - katrā reģionā tiek sakārtotas administratīvās teritorijas, tad katrā administratīvajā teritorijā tiek sakārtotas teritoriālās vienības utt.
+
+Administratīvo teritoriju, teritoriālo vienību, pilsētu apkaimju un ēku sakārtošanai tiek izmantotas ģeogrāfiskās koordinātas, kas ir iegūtas no VZD Adrešu reģistra datiem. Vienības tiek sakārtotas tādā secībā, lai tās tiktu savienotas, izmantojot īsāko summāro distanci starp tām. Sakārtojuma noteikšana tiek veikta, atrisinot Ceļojošā tirgotāja problēmu (*Traveling Salesmen Problem*). Šāds vienību sakārtojums nodrošinās labu izlases ģeogrāfisko izkliedi.
+
+Ņemot vērā to, ka otrajā atlases pakāpē tiks atlasīta viena atbilstoša izlases persona no izalses mājokļa, mājokļi tiek atlasīti ar \pips izlasi, kur vienību atlases varbūtības ir proporcionālas vienības lielumam. Šajā gadījumā izlases vienības (mājokļa) lielums tiek noteikts vienāds ar reģistrēto personu skaitu vecumā 18-59 gadi (CSP dati). Vienības lielums ir ierobežots no 1 līdz 10. Ja mājoklī ir reģistrētas vairāk kā 10 18-59 gadus vecas personas, tad mājokļa lielums tiek noteikts vienāds ar 10. Tas tiek veikts, lai izvairītos no ekstrēmi lielām atlases varbūtībām.
+
+Rezultātā mājokļu atlases varbūtības pirmajā atlases pakāpē būs apgriesti proporcionālas personu atlases varbūtībām otrajā pakāpē, kas nodrošinās līdzīgas atlases varbūtības visām izlases personām. Šeit tiek pieņemts, ka mājoklī reģistrēto 18-59 vecuma personu skaits labi korelē ar faktisko 18-59 vecuma personu skaitu mājoklī.
+
+```{r sample allocation by L0}
+frame_majo[,
+  .(
+    n_pop = .N,
+    n_sam_total = sum(sample_total),
+    n_sam_main = sum(sample_main),
+    n_sam_res = sum(sample_res)
+  ),
+  keyby = .(L0_code, L0_name)
+] |> gt() |>
+  tab_caption("Mājokļu ietvara un izlases sadalījums pēc administratīvajām teritorijām") |>
+  cols_label(
+    L0_code = "Administratīvās teritorijas kods",
+    L0_name = "Administratīvās teritorijas nosaukums",
+    n_pop = "Mājokļu skaits ietvarā",
+    n_sam_total = "Mājokļu skaits kopīgajā izlasē",
+    n_sam_main = "Mājokļu skaits pamatizlasē",
+    n_sam_res = "Mājokļu skaits rezerves izlasē"
+  ) |>
+  grand_summary_rows(
+    columns = c("n_pop", "n_sam_total", "n_sam_main", "n_sam_res"),
+    fns = Kopā ~ sum(.),
+    fmt = ~ fmt_number(., decimals = 0)
+  ) |>
+  fmt_number(decimals = 0) |>
+  tab_options(
+    quarto.disable_processing = TRUE
+  )
+
+```
+
+## Otrās pakāpes izlase
+
+Otrajā pakāpē no izlases mājokļa gadījuma veidā tiek atlasīta viena apsekojumam atbilstoša persona. Atlasi veic mājoklī dzīvojošās personas atbilstoši apsekojuma norādījumiem.
+
+**Ir svarīgi respondentam norādīt, cik daudz pastāvīgie iedzīvotāji vecumā 18-59 gadi dzīvo izlases mājoklī.** Šī informācija ir obligāti nepieciešama, lai aprēķinātu otrās pakāpes atlases varbūtības un izlases plānojuma svarus. Datu vākšana ir jārgonizē tā, lai minimizētu datu iztrūkumu šim jautājumam.
+
+## Izlases karte
+
+```{r map}
+#| column: screen
+
+# Map
+map_data <- frame_majo[
+  sample_total == 1L,
+  .(
+    n = .N,
+    popup_label = paste0(
+      "Izlase: <b>", ifelse(sample_main, "pamata", "rezerves"), "</b>, ",
+      "ID: ", adr_kods, ", ",
+      adrese,
+      collapse = "<br>"
+    )
+  ),
+  keyby = .(adr_kods_eka, dd_e, dd_n)
+]
+
+# map_data[, sum(n)]
+
+leaflet(data = map_data) %>%
+  addTiles() %>%  # Add default OpenStreetMap map tiles
+  addFullscreenControl() %>%
+  addCircleMarkers(
+    lng = ~dd_e,
+    lat = ~dd_n,
+    radius = ~n,  # scale the radius based on n
+    popup = ~popup_label,
+    stroke = TRUE,
+    fillOpacity = 0.7,
+    clusterOptions = markerClusterOptions()
+  )
+
+```
+
+## Izlases saraksts
+
+Izlases saraksts ir sagatavots divos formātos - CSV un XLSX. Abu failu saturs ir vienāds. Failos ir šādas kolonas:
+
+| Nosaukums        | Apraksts                                                                 |
+|------------------|--------------------------------------------------------------------------|
+| id               | Izlases vienības ID (vienāds ar mājokļa adreses kodu `adr_kods`)         |
+| str_expl         | Tiešās stratifikācijas mainīgais                                         |
+| str_impl         | Netiešās stratifikācijas mainīgais (sakārtojums katrā tiešajā stratā)    |
+| pil_lauk         | Teritorijas tipa kods (1--4)                                             |
+| pil_lauk_name    | Teritorijas tipa nosaukums                                               |
+| NUTS3_code       | NUTS3 līmeņa reģiona kods                                                |
+| NUTS3_name       | NUTS3 līmeņa reģiona nosaukums                                           |
+| L0_code          | Administratīvās teritorijas kods                                         |
+| L0_name          | Administratīvās teritorijas nosaukums                                    |
+| L1_code          | Teritoriālās vienības kods                                               |
+| L1_name          | Teritoriālās vienības nosaukums                                          |
+| apk_code         | Apkaimes kods                                                            |
+| apk_name         | Apkaimes nosaukums                                                       |
+| adr_kods_eka     | Ēkas adreses kods                                                        |
+| koord_x          | Ģeogrāfiskās koordinātas X (LKS-92 projekcijā)                           |
+| koord_y          | Ģeogrāfiskās koordinātas Y (LKS-92 projekcijā)                           |
+| dd_e             | Ģeogrāfiskais garums (decimal grādos)                                    |
+| dd_n             | Ģeogrāfiskais platums (decimal grādos)                                   |
+| adr_kods         | Mājokļa adreses kods (vienāds ar `id`)                                   |
+| tips_cd          | Adresācijas objekta tips (108 = ēka, 109 = dzīvoklis)                    |
+| adrese           | Adrese (teksta formā)                                                    |
+| pers_sk_1859     | Pastāvīgo iedzīvotāju skaits vecumā 18–59 g.                             |
+| size             | Izlases vienības lielums (1-10)                                          |
+| sample_total     | Vai iekļauts kopējā izlasē (1 = jā, 0 = nē)                              |
+| pik_total        | Iekļaušanas varbūtība kopējā izlasē                                      |
+| dw_st1_total     | Pirmās pakāpes plānojuma svars kopīgajai izlasei                         |
+| sample_main      | Vai iekļauts pamatizlasē (1 = jā, 0 = nē)                                |
+| pik_main         | Iekļaušanas varbūtība pamatizlasē                                        |
+| dw_st1_main      | Pirmās pakāpes plānojuma svars pamatizlasei                              |
+| sample_res       | Vai iekļauts rezerves izlasē (1 = jā, 0 = nē)                            |
